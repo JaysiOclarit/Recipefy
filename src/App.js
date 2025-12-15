@@ -6,6 +6,7 @@ import Recipe from "./pages/Recipe";
 import Search from "./pages/Search";
 import AIChef from "./pages/AIChef"; // Import the new page
 import SideBarLayout from "./layout/SideBarLayout";
+import SavedRecipes from "./pages/SavedRecipes";
 
 const queryClient = new QueryClient();
 
@@ -17,6 +18,7 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/recipe/:id" element={<Recipe />} />
           <Route path="/ai-chef" element={<AIChef />} /> {/* New Route */}
+          <Route path="/saved" element={<SavedRecipes />} />
           <Route
             path="/search/:keyword/:mealType"
             element={

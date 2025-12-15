@@ -2,14 +2,18 @@ import React, { useState } from 'react';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import NavBar from "../components/NavBar";
 import Footer from "../components/Footer";
+import { doc, updateDoc, arrayUnion, setDoc } from 'firebase/firestore'; // Firebase imports
+import { db, auth } from '../firebase'; // Firebase config
 
-const API_KEY = "AIzaSyAOSdnORJbrUU7hoVFPLI_0jxwLDNy0PFY"; // Get from aistudio.google.com
+// NOTE: It is better to use process.env.REACT_APP_GEMINI_API_KEY
+const API_KEY = "AIzaSyAOSdnORJbrUU7hoVFPLI_0jxwLDNy0PFY"; 
 const genAI = new GoogleGenerativeAI(API_KEY);
 
 const AIChef = () => {
   const [prompt, setPrompt] = useState("");
   const [recipe, setRecipe] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false); // New state for save button
 
   const generateRecipe = async () => {
     if(!prompt) return;
@@ -22,13 +26,43 @@ const AIChef = () => {
       const result = await model.generateContent(fullPrompt);
       const response = await result.response;
       let text = response.text();
-      text = text.replace(/```json|```/g, ''); // Clean markdown
-      setRecipe(JSON.parse(text));
+      text = text.replace(/```json|```/g, ''); 
+      
+      // We add a random ID so we can identify it later
+      const data = JSON.parse(text);
+      data.id = Date.now(); // Use timestamp as a unique ID
+      data.image = "https://via.placeholder.com/640x360?text=AI+Chef+Special"; // Default image
+      data.isCustom = true; // Flag to identify this as an AI recipe
+      
+      setRecipe(data);
     } catch (error) {
       console.error(error);
       alert("AI Chef is busy! Try again.");
     }
     setLoading(false);
+  };
+
+  // NEW: Function to save the AI recipe to Firestore
+  const saveRecipe = async () => {
+    if (!auth.currentUser) return alert("Please login to save recipes!");
+    setSaving(true);
+    try {
+      const userRef = doc(db, "users", auth.currentUser.uid);
+      
+      // Ensure user document exists
+      await setDoc(userRef, { email: auth.currentUser.email }, { merge: true });
+
+      // Save the WHOLE recipe object, not just an ID
+      await updateDoc(userRef, {
+        savedAIRecipes: arrayUnion(recipe)
+      });
+      
+      alert("Recipe Saved to Favorites!");
+    } catch (error) {
+      console.error("Error saving:", error);
+      alert("Failed to save recipe.");
+    }
+    setSaving(false);
   };
 
   return (
@@ -56,8 +90,17 @@ const AIChef = () => {
           </button>
 
           {recipe && (
-            <div className="mt-8 border-t pt-6">
-              <h2 className="text-2xl font-bold text-gray-800">{recipe.title}</h2>
+            <div className="mt-8 border-t pt-6 relative">
+              {/* SAVE BUTTON FOR AI RECIPE */}
+              <button 
+                onClick={saveRecipe}
+                disabled={saving}
+                className="absolute top-6 right-0 bg-red-500 text-white px-4 py-2 rounded-full text-sm font-bold shadow hover:bg-red-600 transition"
+              >
+                {saving ? "Saving..." : "❤️ Save Recipe"}
+              </button>
+
+              <h2 className="text-2xl font-bold text-gray-800 pr-20">{recipe.title}</h2>
               <p className="text-gray-500 mb-4">⏱️ {recipe.readyInMinutes} Minutes</p>
               
               <h3 className="font-bold text-lg mb-2">Ingredients:</h3>

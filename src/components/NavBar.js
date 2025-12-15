@@ -29,6 +29,7 @@ const NavBar = () => {
 
           {user ? (
             <div className="flex items-center gap-4">
+              <Link to="/saved" className="hover:text-green-400 transition font-bold">Favorites</Link>
               <img src={user.photoURL} alt="User" className="w-8 h-8 rounded-full border-2 border-green-500" />
               <button onClick={logout} className="bg-red-500 px-4 py-1 rounded hover:bg-red-600 transition text-sm">
                 Logout
