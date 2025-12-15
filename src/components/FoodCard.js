@@ -1,8 +1,8 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import SaveButton from "./SaveButton"; // Import the new button
 
 const FoodCard = ({ recipe }) => {
-  // Construct the image URL using the Spoonacular API's image base URL and the image file name from the recipe object
   const isValidUrl = (string) => {
     try {
       new URL(string);
@@ -20,8 +20,12 @@ const FoodCard = ({ recipe }) => {
     "https://via.placeholder.com/300x150?text=No%20Image";
 
   return (
-    <Link to={`/recipe/${recipe.id}`}>
-      <div className="w-full h-full bg-white rounded-xl overflow-hidden shadow-lg relative hover:underline">
+    <div className="w-full h-full bg-white rounded-xl overflow-hidden shadow-lg relative hover:shadow-xl transition-shadow duration-300">
+      
+      {/* ADDED: Save Button (positioned absolute top-left) */}
+      <SaveButton recipeId={recipe.id} />
+
+      <Link to={`/recipe/${recipe.id}`}>
         {/* Food Image */}
         <img
           className="h-48 w-full object-cover"
@@ -47,11 +51,11 @@ const FoodCard = ({ recipe }) => {
           <p className="text-base text-center">{recipe.readyInMinutes} min</p>
         </div>
         {/* Food title */}
-        <div className="px-6 py-4 ">
-          <div className="font-bold  mb-2 text-gray-700">{recipe.title}</div>
+        <div className="px-6 py-4">
+          <div className="font-bold mb-2 text-gray-700">{recipe.title}</div>
         </div>
-      </div>
-    </Link>
+      </Link>
+    </div>
   );
 };
 
