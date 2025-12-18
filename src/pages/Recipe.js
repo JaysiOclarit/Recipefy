@@ -92,7 +92,13 @@ const Recipe = () => {
                    {ingredientsList && ingredientsList.map((item, i) => (
                      <li key={i} className="flex items-start gap-3 text-slate-600 text-sm">
                        <span className="w-2 h-2 rounded-full bg-green-500 mt-1.5 shrink-0" />
-                       {item}
+                       
+                       {/* FIX: Check if item is an object or string */}
+                       {typeof item === 'object' && item !== null 
+                         ? `${item.quantity || ''} ${item.unit || ''} ${item.name || ''}` 
+                         : item
+                       }
+
                      </li>
                    ))}
                  </ul>

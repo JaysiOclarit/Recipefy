@@ -12,57 +12,74 @@ const genAI = new GoogleGenerativeAI(API_KEY);
 const AIChef = () => {
   const [prompt, setPrompt] = useState("");
   const [recipe, setRecipe] = useState(null);
+  const [errorMsg, setErrorMsg] = useState(null); // New state for AI messages
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false); // New state for save button
+  const [saving, setSaving] = useState(false); 
 
   const generateRecipe = async () => {
     if(!prompt) return;
     setLoading(true);
+    setRecipe(null);
+    setErrorMsg(null);
+
     try {
       const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+      
+      // We explicitly ask for JSON, but if the AI refuses, it will return text.
       const fullPrompt = `Create a detailed recipe based on: "${prompt}". 
-      Return JSON with fields: title, readyInMinutes, ingredients (array), instructions (array of strings).`;
+      Return JSON with fields: title, readyInMinutes, ingredients (array of strings), instructions (array of strings).`;
       
       const result = await model.generateContent(fullPrompt);
       const response = await result.response;
       let text = response.text();
       text = text.replace(/```json|```/g, ''); 
       
-      // We add a random ID so we can identify it later
-      const data = JSON.parse(text);
-      data.id = Date.now(); // Use timestamp as a unique ID
-      data.image = "https://via.placeholder.com/640x360?text=AI+Chef+Special"; // Default image
-      data.isCustom = true; // Flag to identify this as an AI recipe
-      
-      setRecipe(data);
+      try {
+        // Try to parse the response as a Recipe
+        const data = JSON.parse(text);
+        
+        // Add custom IDs for our app
+        data.id = Date.now(); 
+        data.image = "https://via.placeholder.com/640x360?text=AI+Chef+Special"; 
+        data.isCustom = true; 
+        
+        setRecipe(data);
+      } catch (parseError) {
+        // !!! THIS HANDLES THE REFUSAL !!!
+        // If JSON.parse fails, it means the AI sent a text message (refusal or clarification).
+        // We set that text as the error message to display to the user.
+        console.warn("AI returned text instead of JSON:", text);
+        setErrorMsg(text);
+      }
+
     } catch (error) {
       console.error(error);
-      alert("AI Chef is busy! Try again.");
+      setErrorMsg("The AI Chef encountered a connection issue. Please try again.");
     }
     setLoading(false);
   };
 
-  // NEW: Function to save the AI recipe to Firestore
   const saveRecipe = async () => {
     if (!auth.currentUser) return alert("Please login to save recipes!");
     setSaving(true);
     try {
       const userRef = doc(db, "users", auth.currentUser.uid);
-      
-      // Ensure user document exists
       await setDoc(userRef, { email: auth.currentUser.email }, { merge: true });
-
-      // Save the WHOLE recipe object, not just an ID
-      await updateDoc(userRef, {
-        savedAIRecipes: arrayUnion(recipe)
-      });
-      
+      await updateDoc(userRef, { savedAIRecipes: arrayUnion(recipe) });
       alert("Recipe Saved to Favorites!");
     } catch (error) {
       console.error("Error saving:", error);
       alert("Failed to save recipe.");
     }
     setSaving(false);
+  };
+
+  // Helper to prevent "Objects are not valid" crashes
+  const renderIngredient = (ing) => {
+    if (typeof ing === 'object' && ing !== null) {
+      return `${ing.quantity || ''} ${ing.unit || ''} ${ing.name || ''}`;
+    }
+    return ing;
   };
 
   return (
@@ -89,9 +106,18 @@ const AIChef = () => {
             {loading ? "Cooking..." : "Generate Recipe"}
           </button>
 
+          {/* DISPLAY ERROR MESSAGE IF AI REFUSES */}
+          {errorMsg && (
+            <div className="mt-8 p-6 bg-red-50 border border-red-100 rounded-xl text-center animate-fade-in">
+              <div className="text-4xl mb-2">👮‍♂️</div>
+              <h3 className="text-red-600 font-bold mb-2">Chef's Response</h3>
+              <p className="text-gray-700 whitespace-pre-wrap">{errorMsg}</p>
+            </div>
+          )}
+
+          {/* DISPLAY RECIPE IF SUCCESSFUL */}
           {recipe && (
             <div className="mt-8 border-t pt-6 relative">
-              {/* SAVE BUTTON FOR AI RECIPE */}
               <button 
                 onClick={saveRecipe}
                 disabled={saving}
@@ -105,7 +131,9 @@ const AIChef = () => {
               
               <h3 className="font-bold text-lg mb-2">Ingredients:</h3>
               <ul className="list-disc pl-5 mb-4 text-gray-700">
-                {recipe.ingredients.map((ing, i) => <li key={i}>{ing}</li>)}
+                {recipe.ingredients.map((ing, i) => (
+                  <li key={i}>{renderIngredient(ing)}</li>
+                ))}
               </ul>
 
               <h3 className="font-bold text-lg mb-2">Instructions:</h3>
