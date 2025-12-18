@@ -6,7 +6,7 @@ import { doc, updateDoc, arrayUnion, setDoc } from 'firebase/firestore'; // Fire
 import { db, auth } from '../firebase'; // Firebase config
 
 // NOTE: It is better to use process.env.REACT_APP_GEMINI_API_KEY
-const API_KEY = "AIzaSyAOSdnORJbrUU7hoVFPLI_0jxwLDNy0PFY"; 
+const API_KEY = process.env.REACT_APP_GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(API_KEY);
 
 const AIChef = () => {
